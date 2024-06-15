@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultra Zoom Camera</title>
+    <!-- Local Font Awesome CSS -->
+    <link rel="stylesheet" href="fontawesome.min.css">
+    <link rel="stylesheet" href="solid.min.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .controls {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        .controls button {
+            padding: 15px;
+            margin: 0 10px;
+            font-size: 24px;
+            background-color: #000dff; /* Dark Green */
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: zoom-in;
+        }
+        #toggle-flashlight{
+            cursor: cell;
+        }
+        #zoom-out{
+            cursor: zoom-out;
+        }
+        .controls button i {
+            font-size: 32px;
+        }
+
+        .zoom-info {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        .error-message, .instructions, .zoom-info {
+            color: red;
+            text-align: center;
+            z-index: 1;
+        }
+
+        .instructions {
+            color: #000;
+        }
+
+        #capture-button {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            font-size: 24px;
+            background-color: #006400; /* Dark Green */
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: cell;
+        }
+
+        #capture-button i {
+            font-size: 32px;
+        }
+        .contact{
+          background-color: cyan;
+          border: none;
+          color: black;
+          font-weight: bold;
+          padding: 1% 0 1% 0;
+          transition: 140ms;
+          cursor: none;
+          cursor: url('1.png') , pointer;
+          border-radius: 10px;
+        }
+        .contact:hover{
+          color: rgb(83, 83, 83);
+          background-color: rgb(0, 152, 152);
+          border-radius: 30px;
+        }
+        .contact:active{
+            color: rgb(240, 240, 240);
+            border-radius: 50%;
+            background-color: rgb(0, 61, 61);
+        }
+        
+    </style>
+</head>
+<body>
+  <a href="contact.html" accesskey="c"><button class="contact">Contact us</button></a>
+    <div class="camera-container">
+        <video id="video"  playsinline></video>
+    </div>
+    <div class="controls">
+        <button id="zoom-in"><i class="fas fa-search-plus"></i></button>
+        <button id="zoom-out"><i class="fas fa-search-minus"></i></button>
+        <button id="toggle-flashlight"><i class="fas fa-lightbulb"></i></button>
+    </div>
+    <div class="zoom-info" id="zoom-info">Zoom Level: 1x</div>
+    <div class="error-message" id="error-message"></div>
+    <div class="instructions" id="instructions">Please allow camera access to continue.</div>
+    <a accesskey="c"><button id="capture-button"><i class="fas fa-camera"></i></button></a>
+    <script>
+        alert("Welcom")
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('video');
+            const zoomInButton = document.getElementById('zoom-in');
+            const zoomOutButton = document.getElementById('zoom-out');
+            const toggleFlashlightButton = document.getElementById('toggle-flashlight');
+            const zoomInfo = document.getElementById('zoom-info');
+            const errorMessage = document.getElementById('error-message');
+            const instructions = document.getElementById('instructions');
+            const captureButton = document.getElementById('capture-button');
+
+            let zoomLevel = 1;
+            let flashlightOn = false;
+            let initialPinchDistance = 0;
+            let initialZoomLevel = 1;
+            let stream = null;
+
+            // Access the webcam with user-facing camera if available
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                }).then(str => {
+                    stream = str;
+                    video.srcObject = stream;
+                    video.play();
+                    instructions.style.display = 'none';
+                }).catch(err => {
+                    console.error('Error accessing webcam: ', err);
+                    errorMessage.textContent = 'Error accessing webcam: ' + err.message;
+                });
+            } else {
+                errorMessage.textContent = 'getUserMedia not supported on your browser.';
+            }
+
+            // Function to update zoom level display
+            function updateZoomInfo() {
+                zoomInfo.textContent = `Zoom Level: ${zoomLevel.toFixed(2)}x`;
+            }
+
+            // Zoom in button functionality
+            zoomInButton.addEventListener('click', () => {
+                if (zoomLevel < 1000) { // Limit zoom to 100x
+                    zoomLevel += 1;
+                    video.style.transform = `scale(${zoomLevel})`;
+                    updateZoomInfo();
+                }
+            });
+
+            // Zoom out button functionality
+            zoomOutButton.addEventListener('click', () => {
+                if (zoomLevel > 1) {
+                    zoomLevel -= 1;
+                    video.style.transform = `scale(${zoomLevel})`;
+                    updateZoomInfo();
+                }
+            });
+
+            // Toggle flashlight button functionality
+            toggleFlashlightButton.addEventListener('click', () => {
+                const track = stream.getVideoTracks()[0];
+                if (!track) {
+                    alert('No video track found');
+                    return;
+                }
+                const capabilities = track.getCapabilities();
+                if (!capabilities.torch) {
+                    alert('Torch mode not supported on your phone on browser');
+                    return;
+                }
+                flashlightOn = !flashlightOn;
+                track.applyConstraints({
+                    advanced: [{ torch: flashlightOn }]
+                }).then(() => {
+                    toggleFlashlightButton.innerHTML = flashlightOn ? '<i class="fas fa-lightbulb"></i>' : '<i class="far fa-lightbulb"></i>';
+                }).catch(err => {
+                    alert('Failed to apply constraints: ', err);
+                });
+            });
+
+            // Capture button functionality
+            captureButton.addEventListener('click', () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                // Set the canvas size to match the video element
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                // Calculate the area of the video to draw on the canvas
+                const drawWidth = video.videoWidth / zoomLevel;
+                const drawHeight = video.videoHeight / zoomLevel;
+                const drawX = (video.videoWidth - drawWidth) / 2;
+                const drawY = (video.videoHeight - drawHeight) / 2;
+
+                // Draw the zoomed area on the canvas
+                ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/png');
+                
+                // Save the image to the internal storage
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = 'captured_photo.png';
+                link.click();
+            });
+
+            // Pinch gesture event listeners
+            let touchStartDistance = 0;
+
+            video.addEventListener('touchstart', event => {
+                if (event.touches.length === 2) {
+                    initialPinchDistance = Math.hypot(
+                        event.touches[1].pageX - event.touches[0].pageX,
+                        event.touches[1].pageY - event.touches[0].pageY
+                    );
+                    initialZoomLevel = zoomLevel;
+                }
+            });
+
+            video.addEventListener('touchmove', event => {
+                if (event.touches.length === 2) {
+                    const currentPinchDistance = Math.hypot(
+                        event.touches[1].pageX - event.touches[0].pageX,
+                        event.touches[1].pageY - event.touches[0].pageY
+                    );
+                    const deltaDistance = currentPinchDistance - initialPinchDistance;
+                    const zoomFactor = deltaDistance / window.innerWidth;
+                    zoomLevel = initialZoomLevel + zoomFactor * 20; // Adjust the multiplier for sensitivity
+                    zoomLevel = Math.max(1, Math.min(100, zoomLevel)); // Limit zoom level to 100x
+                    video.style.transform = `scale(${zoomLevel})`;
+                    updateZoomInfo();
+                    event.preventDefault();
+                }
+            });
+
+            video.addEventListener('touchend', event => {
+                initialPinchDistance = 0;
+            });
+
+        });
+    </script>
+</body>
+</html>

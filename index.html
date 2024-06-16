@@ -112,15 +112,11 @@
             border-radius: 50%;
             background-color: rgb(0, 61, 61);
         }
-        .myh{
-            color: red;
-            text-align: center;
-        }
+        
     </style>
 </head>
 <body>
   <a href="contact.html" accesskey="c"><button class="contact">Contact us</button></a>
-    <h1 class="myh">You Can Zoom Up To 1000x here try it</h1>
     <div class="camera-container">
         <video id="video"  playsinline></video>
     </div>
@@ -134,7 +130,7 @@
     <div class="instructions" id="instructions">Please allow camera access to continue.</div>
     <a accesskey="c"><button id="capture-button"><i class="fas fa-camera"></i></button></a>
     <script>
-        alert("Welcom")
+        alert("Welcome")
         document.addEventListener('DOMContentLoaded', () => {
             const video = document.getElementById('video');
             const zoomInButton = document.getElementById('zoom-in');
@@ -154,7 +150,11 @@
             // Access the webcam with user-facing camera if available
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },  // Set ideal resolution
+                        height: { ideal: 1080 }
+                    }
                 }).then(str => {
                     stream = str;
                     video.srcObject = stream;
@@ -175,7 +175,7 @@
 
             // Zoom in button functionality
             zoomInButton.addEventListener('click', () => {
-                if (zoomLevel < 1000) { // Limit zoom to 100x
+                if (zoomLevel < 100) { // Limit zoom to 100x
                     zoomLevel += 1;
                     video.style.transform = `scale(${zoomLevel})`;
                     updateZoomInfo();
@@ -200,7 +200,7 @@
                 }
                 const capabilities = track.getCapabilities();
                 if (!capabilities.torch) {
-                    alert('Torch mode not supported on your phone on browser');
+                    alert('Torch mode not supported on your phone or browser');
                     return;
                 }
                 flashlightOn = !flashlightOn;
@@ -218,15 +218,17 @@
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
 
-                // Set the canvas size to match the video element
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
+                // Set the canvas size to match the video element's resolution
+                const track = stream.getVideoTracks()[0];
+                const settings = track.getSettings();
+                canvas.width = settings.width;
+                canvas.height = settings.height;
 
                 // Calculate the area of the video to draw on the canvas
-                const drawWidth = video.videoWidth / zoomLevel;
-                const drawHeight = video.videoHeight / zoomLevel;
-                const drawX = (video.videoWidth - drawWidth) / 2;
-                const drawY = (video.videoHeight - drawHeight) / 2;
+                const drawWidth = settings.width / zoomLevel;
+                const drawHeight = settings.height / zoomLevel;
+                const drawX = (settings.width - drawWidth) / 2;
+                const drawY = (settings.height - drawHeight) / 2;
 
                 // Draw the zoomed area on the canvas
                 ctx.drawImage(video, drawX, drawY, drawWidth, drawHeight, 0, 0, canvas.width, canvas.height);
